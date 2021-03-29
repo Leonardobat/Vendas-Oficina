@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import sys
-from PySide2.QtCore import Slot, Signal
-from PySide2.QtWidgets import (
+from PySide6.QtCore import Slot, Signal
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import (
     QMainWindow,
     QMenuBar,
-    QAction,
     QStatusBar,
     QMessageBox,
     QApplication,
@@ -14,8 +14,7 @@ from PySide2.QtWidgets import (
     QFrame,
     QSizePolicy,
 )
-from ordem_de_servico import Janela_Vendas
-from pecas import Janela_Pecas
+from Gui import VendasWidget, AdicionarPeçasWidget
 
 
 class Principal(QMainWindow):
@@ -26,7 +25,7 @@ class Principal(QMainWindow):
         self.widget = QWidget()
 
         # Janela
-        self.principal = Janela_Vendas()
+        self.principal = VendasWidget()
         self.principal.signal_status.connect(self.atualizar_status)
         self.principal.signal_itens.connect(self.adicionar_itens)
         self.setCentralWidget(self.principal)
@@ -49,7 +48,7 @@ class Principal(QMainWindow):
     def info(self):
         self.popup = QMessageBox(QMessageBox.Information, "Sobre",
                                  "Informações")
-        self.popup.setInformativeText("""Suite de Apoio \nVersão 0.1
+        self.popup.setInformativeText("""Suite de Apoio \nVersão 0.2
         \nFeito com S2 por Zero \nMIT License""")
         self.popup.addButton(QMessageBox.Ok)
         self.popup.exec()
@@ -60,7 +59,7 @@ class Principal(QMainWindow):
 
     @Slot()
     def adicionar_itens(self):
-        self.itens_janela = Janela_Pecas()
+        self.itens_janela = AdicionarPeçasWidget()
         self.itens_janela.setWindowTitle('Peças')
         self.itens_janela.signal_data.connect(self.principal.adicionar_itens)
         self.itens_janela.show()

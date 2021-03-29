@@ -4,7 +4,7 @@ from getpass import getuser
 from time import time
 
 
-class driver_db():
+class Providers():
 
     def __init__(self):
         if sys.platform.startswith('linux'):
