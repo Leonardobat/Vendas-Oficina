@@ -64,3 +64,16 @@ class Providers():
             (old_data["quantidade"], id),
         )
         self.db_estoque.commit()
+
+    def adicionar_cliente(self, data: dict):
+        self.db_cliente.execute(
+            "INSERT INTO cliente (nome, numero,"
+            " cpf, endereco) VALUES (?,?,?,?)",
+            (
+                data["nome"],
+                data["numero"],
+                data["cpf"],
+                data["endereco"],
+            ),
+        )
+        self.db_cliente.commit()

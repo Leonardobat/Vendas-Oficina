@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QWidget, QLabel, QComboBox, QLineEdit, QTextEdit,
                                QTableWidget, QPushButton, QHeaderView,
                                QTableWidgetItem, QVBoxLayout, QHBoxLayout,
                                QFrame, QGridLayout, QAbstractItemView, QWidget,
-                               QDoubleSpinBox, QSpinBox, QMessageBox)
+                               QDoubleSpinBox, QSpinBox, QMessageBox, QCheckBox)
 from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtGui import QFont
 from Drivers.DB import Providers
@@ -15,31 +15,34 @@ class VendasWidget(QWidget):
     signal_itens = Signal()
 
     def __init__(self):
+        self.novo_cliente = True
         self.vendas = Vendas()
         self.db = Providers()
         QWidget.__init__(self)
-        Font = QFont()
-        Font.setBold(True)
+        bold_font = QFont()
+        bold_font.setBold(True)
 
         # Labels:
         self.label_nome = QLabel('Nome:')
-        self.label_nome.setFont(Font)
+        self.label_nome.setFont(bold_font)
         self.label_cpf = QLabel('CPF:')
-        self.label_cpf.setFont(Font)
-        self.label_numero = QLabel('Telefone:')
-        self.label_numero.setFont(Font)
+        self.label_cpf.setFont(bold_font)
+        self.label_numero = QLabel('Número:')
+        self.label_numero.setFont(bold_font)
+        self.label_endereco = QLabel('Endereço:')
+        self.label_endereco.setFont(bold_font)
         self.label_placa = QLabel('Placa:')
-        self.label_placa.setFont(Font)
+        self.label_placa.setFont(bold_font)
         self.label_km = QLabel('Quilometragem:')
-        self.label_km.setFont(Font)
+        self.label_km.setFont(bold_font)
         self.label_modelo = QLabel('Modelo:')
-        self.label_modelo.setFont(Font)
+        self.label_modelo.setFont(bold_font)
         self.label_tabela = QLabel('Peças Utilizadas:')
-        self.label_tabela.setFont(Font)
+        self.label_tabela.setFont(bold_font)
         self.label_total = QLabel('Total:')
-        self.label_total.setFont(Font)
+        self.label_total.setFont(bold_font)
         self.label_servico = QLabel('Serviço:')
-        self.label_servico.setFont(Font)
+        self.label_servico.setFont(bold_font)
 
         # Lista de Modelos:
         self.combo_modelo = QComboBox()
@@ -51,6 +54,7 @@ class VendasWidget(QWidget):
         self.entry_nome = QLineEdit()
         self.entry_cpf = QLineEdit()
         self.entry_numero = QLineEdit()
+        self.entry_endereco = QLineEdit()
         self.entry_placa = QLineEdit()
         self.entry_km = QLineEdit()
         self.entry_placa = QLineEdit()
@@ -99,6 +103,8 @@ class VendasWidget(QWidget):
         self.layout_Data.addWidget(self.entry_cpf)
         self.layout_Data.addWidget(self.label_numero)
         self.layout_Data.addWidget(self.entry_numero)
+        self.layout_Data.addWidget(self.label_endereco)
+        self.layout_Data.addWidget(self.entry_endereco)
         self.layout_Data.addWidget(self.label_modelo)
         self.layout_Data.addWidget(self.combo_modelo)
         self.layout_Data.addWidget(self.label_placa)
@@ -141,6 +147,7 @@ class VendasWidget(QWidget):
     def salvar(self):
         nome = self.entry_nome.text()
         numero = self.entry_numero.text()
+        endereco = self.entry_endereco.text()
         modelo = self.entry_nome.text()
         cpf = self.entry_cpf.text()
         placa = self.entry_placa.text()
@@ -152,6 +159,7 @@ class VendasWidget(QWidget):
         for i in range(self.itens):
             pecas.append({
                 'code': self.tabela_pecas.item(i, 0).text(),
+                'nome': self.tabela_pecas.item(i, 1).text(),
                 'qty': int(self.tabela_pecas.item(i, 2).text()),
             })
         if pecas == []:
@@ -160,6 +168,7 @@ class VendasWidget(QWidget):
         data = {
             'nome': nome,
             'numero': numero,
+            'endereco': endereco,
             'modelo': modelo,
             'cpf': cpf,
             'placa': placa,
@@ -170,10 +179,24 @@ class VendasWidget(QWidget):
             'servico': servico,
         }
         for peca in pecas:
-            self.db.atualizacao_venda(peca)
+            if peca['code'] != '':
+                self.db.atualizacao_venda(peca)
 
-        self.vendas.add(data)
-        self.signal_status.emit('Salvo')
+        err = False
+        for key in data:
+            if data[key] == '':
+                err = True
+                message = f"O Valor do campo '{key.capitalize()}' é inválido"
+                break
+
+        if not err:
+            if self.novo_cliente:
+                self.db.adicionar_cliente(data)
+            self.vendas.add(data)
+            self.signal_status.emit('Salvo')
+            self.limpar()
+        else:
+            self.alerta(message)
 
     @Slot()
     def exibir_janela(self):
@@ -181,12 +204,11 @@ class VendasWidget(QWidget):
 
     @Slot()
     def adicionar_itens(self, item: dict):
-        valor = self.entry_total.text()
-        if valor == '':
-            valor = 0
+        total_valor = self.entry_total.text()
+        if total_valor == '':
+            total_valor = 0
         else:
-            valor = float(valor)
-        self.entry_total.setText(str(item['valor'] + valor))
+            total_valor = float(total_valor)
         code = QTableWidgetItem(item['code'])
         nome = QTableWidgetItem(item['nome'])
         qty = QTableWidgetItem(item['qty'])
@@ -201,7 +223,12 @@ class VendasWidget(QWidget):
 
         for i in range(self.itens):
             code_table = self.tabela_pecas.item(i, 0).text()
-            if code.text() == code_table:
+            if code.text == '':
+                if nome == self.tabela_pecas.item(i, 1).text():
+                    exists = True
+                    row = i
+                    break
+            elif code.text() == code_table:
                 exists = True
                 row = i
                 break
@@ -212,6 +239,10 @@ class VendasWidget(QWidget):
             self.tabela_pecas.setItem(row, 2, qty)
             self.tabela_pecas.setItem(row, 3, valor_un)
             self.tabela_pecas.setItem(row, 4, valor)
+            delta_valor = item['valor'] - float(
+                self.tabela_pecas.item(i, 4).text())
+            self.entry_total.setText(str(total_valor + delta_valor))
+
         else:
             self.tabela_pecas.insertRow(self.itens)
             self.tabela_pecas.setItem(self.itens, 0, code)
@@ -220,10 +251,10 @@ class VendasWidget(QWidget):
             self.tabela_pecas.setItem(self.itens, 3, valor_un)
             self.tabela_pecas.setItem(self.itens, 4, valor)
             self.itens += 1
+            self.entry_total.setText(str(item['valor'] + total_valor))
 
     @Slot()
     def limpar_tabela(self):
-        self.entry_valor.clear()
         self.tabela_pecas.clearContents()
         self.tabela_pecas.setRowCount(0)
         self.itens = 0
@@ -237,15 +268,22 @@ class VendasWidget(QWidget):
         self.entry_cpf.clear()
         self.entry_km.clear()
         self.text_servico.clear()
+        self.entry_total.clear()
 
     @Slot()
     def buscar_cliente(self):
         nome = self.entry_nome.text()
         data = self.db.busca_cliente(nome)
         if data != None:
+            self.novo_cliente = False
             self.entry_nome.setText(data['nome'])
             self.entry_numero.setText(data['numero'])
             self.entry_cpf.setText(data['cpf'])
+
+    @staticmethod
+    def alerta(msg: str):
+        popup = QMessageBox(QMessageBox.Warning, 'Erro', msg)
+        popup.exec()
 
 
 class AdicionarPeçasWidget(QWidget):
@@ -253,21 +291,21 @@ class AdicionarPeçasWidget(QWidget):
 
     def __init__(self):
         QWidget.__init__(self)
-        Font = QFont()
-        Font.setBold(True)
+        bold_font = QFont()
+        bold_font.setBold(True)
         self.db = Providers()
 
         # Labels:
         self.label_code = QLabel('Código:')
-        self.label_code.setFont(Font)
+        self.label_code.setFont(bold_font)
         self.label_nome = QLabel('Nome:')
-        self.label_nome.setFont(Font)
+        self.label_nome.setFont(bold_font)
         self.label_qty = QLabel('Quantidade:')
-        self.label_qty.setFont(Font)
+        self.label_qty.setFont(bold_font)
         self.label_valor_un = QLabel('Valor Unitário:')
-        self.label_valor_un.setFont(Font)
+        self.label_valor_un.setFont(bold_font)
         self.label_valor = QLabel('Valor:')
-        self.label_valor.setFont(Font)
+        self.label_valor.setFont(bold_font)
 
         # Entries:
         self.entry_code = QLineEdit()
@@ -275,7 +313,7 @@ class AdicionarPeçasWidget(QWidget):
         self.entry_nome.setReadOnly(True)
         self.entry_qty = QSpinBox()
         self.entry_qty.setEnabled(False)
-        self.entry_qty.setValue(1)
+        self.entry_qty.setValue(0)
         self.entry_qty.valueChanged.connect(self.atualizar_valor)
         self.entry_valor_un = QDoubleSpinBox()
         self.entry_valor_un.setMaximum(9999)
@@ -290,13 +328,16 @@ class AdicionarPeçasWidget(QWidget):
         self.button_buscar = QPushButton("&Buscar")
         self.button_buscar.clicked.connect(self.buscar)
         self.button_buscar.setShortcut("Ctrl+B")
-        self.button_adicionar = QPushButton("&Adicionar")
+        self.button_adicionar = QPushButton("Adicionar")
         self.button_adicionar.clicked.connect(self.adicionar)
         self.button_adicionar.setShortcut("Ctrl+S")
+        self.checkbox_is_extern = QCheckBox("Não Está no Estoque")
+        self.checkbox_is_extern.clicked.connect(self.alternar_modo)
 
         # Leiaute:
         self.layout = QVBoxLayout()
         self.layout_busca = QHBoxLayout()
+        self.layout.addWidget(self.checkbox_is_extern)
         self.layout.addWidget(self.label_code)
         self.layout_busca.addWidget(self.entry_code)
         self.layout_busca.addWidget(self.button_buscar)
@@ -328,8 +369,9 @@ class AdicionarPeçasWidget(QWidget):
             'valor_un': str(valor_un),
             'valor': valor_un * qty,
         }
-        if qty > self.data['quantidade']:
-            self.alerta('Estoque insuficiente')
+        if code != '':
+            if qty > self.data['quantidade']:
+                self.alerta('Estoque insuficiente')
         elif qty <= 0:
             self.alerta('Quantidade Inválida')
         else:
@@ -353,7 +395,24 @@ class AdicionarPeçasWidget(QWidget):
         if valor_un > 0:
             self.entry_valor.setValue(qty * valor_un)
 
-    @Slot()
-    def alerta(self, msg: str):
+    @staticmethod
+    def alerta(msg: str):
         popup = QMessageBox(QMessageBox.Warning, 'Erro', msg)
         popup.exec()
+
+    @Slot()
+    def alternar_modo(self):
+        if self.checkbox_is_extern.isChecked():
+            self.entry_code.setReadOnly(True)
+            self.button_buscar.setEnabled(False)
+            self.entry_nome.setReadOnly(False)
+            self.entry_qty.setEnabled(True)
+            self.entry_valor_un.setReadOnly(False)
+            self.entry_valor.setReadOnly(False)
+        else:
+            self.entry_code.setReadOnly(False)
+            self.button_buscar.setEnabled(True)
+            self.entry_nome.setReadOnly(True)
+            self.entry_qty.setEnabled(False)
+            self.entry_valor_un.setReadOnly(True)
+            self.entry_valor.setReadOnly(True)
